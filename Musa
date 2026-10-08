@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Musa Signal Bot</title>
+<style>
+body{margin:0;background:#0b0f14;color:white;font-family:Arial;text-align:center}
+.box{max-width:420px;margin:40px auto;padding:25px}
+h1{font-size:28px}
+#price{font-size:30px;margin:25px}
+#signal{font-size:42px;font-weight:bold;margin:25px}
+.up{color:#20d47b}.down{color:#ff4d5d}.wait{color:#ffd34d}
+button{padding:14px 25px;border:0;border-radius:10px;font-size:18px}
+</style>
+</head>
+
+<body>
+<div class="box">
+<h1>MUSA SIGNAL BOT</h1>
+<div id="status">Connecting...</div>
+<div id="price">--</div>
+<div id="signal" class="wait">WAIT</div>
+<div id="confidence">Confidence: --%</div>
+</div>
+
+<script>
+const SYMBOL="btcusdt";
+let prices=[];
+
+const ws=new WebSocket(
+ "wss://stream.binance.com:9443/ws/"+SYMBOL+"@trade"
+);
+
+ws.onopen=()=>{
+ document.getElementById("status").textContent="LIVE DATA CONNECTED";
+};
+
+ws.onmessage=(event)=>{
+ const data=JSON.parse(event.data);
+ const price=Number(data.p);
+
+ prices.push(price);
+ if(prices.length>30) prices.shift();
+
+ document.getElementById("price").textContent=
+   "$"+price.toFixed(2);
+
+ if(prices.length<10)return;
+
+ const short=prices.slice(-5);
+ const long=prices.slice(-15);
+
+ const shortAvg=short.reduce((a,b)=>a+b,0)/short.length;
+ const longAvg=long.reduce((a,b)=>a+b,0)/long.length;
+
+ let signal="WAIT";
+ let confidence=50;
+
+ if(shortAvg>longAvg){
+   signal="UP";
+   confidence=Math.min(
+     95,
+     50+Math.abs(shortAvg-longAvg)/longAvg*10000
+   );
+ }else if(shortAvg<longAvg){
+   signal="DOWN";
+   confidence=Math.min(
+     95,
+     50+Math.abs(shortAvg-longAvg)/longAvg*10000
+   );
+ }
+
+ const el=document.getElementById("signal");
+ el.textContent=signal;
+ el.className=
+   signal==="UP"?"up":
+   signal==="DOWN"?"down":"wait";
+
+ document.getElementById("confidence").textContent=
+   "Confidence: "+confidence.toFixed(1)+"%";
+};
+
+ws.onerror=()=>{
+ document.getElementById("status").textContent="LIVE DATA ERROR";
+};
+</script>
+</body>
+</html>
